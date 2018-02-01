@@ -7,7 +7,8 @@ Created on Fri Jan 19 19:44:42 2018
 
 # Matching String
 from difflib import SequenceMatcher
-import sys
+import re
+import argparse
 
 class Score(object):
     def __init__ (self, input_kota, input_penghasilan, input_umur,
@@ -86,12 +87,12 @@ class Score(object):
             return -15
 
 class Data(object):
-    def __init__(self,data):
-        self.data = data
+    def __init__(self,filename):
+        self.filename = filename
     def similar(self, a, b):
         return SequenceMatcher(None, a, b).ratio()
     def FixedData(self):
-        inp = open(self.data,'r')
+        inp = open(self.filename,'r')
         inp = inp.read().split('\n')
         ListKota = ['Jakarta' , 'Bogor' ,'Depok' , 'Tangerang' , 'Bekasi', 'Surabaya']
         ListKelamin = ['Pria', 'Wanita']
@@ -99,8 +100,9 @@ class Data(object):
         ListPekerjaan = ['Pegawai Swasta', 'Wiraswasta', 'Ibu Rumah Tangga']
         AllData=[]
         for i in range(len(inp)):
-            input_data=inp[i].split('|')
-            if inp[i].split('|') != [''] and len(inp[i].split('|')) == 8:
+            delimiter = re.compile(r'[\t\\/|,_-]')
+            input_data = re.split(delimiter, inp[i])
+            if input_data != [''] and len(input_data) == 8:
                 # assume empty int data is zero (0)
                 if input_data[2] == '':
                     input_data[2] = 0
@@ -146,48 +148,31 @@ class Data(object):
                 input_data[4] = ListKelamin[lskl.index(max(lskl))]
                 
                 AllData.append(input_data)
-            elif inp[i].split('|') != [''] and len(inp[i].split('|')) < 8:
+            elif input_data != [''] and len(input_data) < 8:
                 AllData.append(input_data)
         return AllData
-
-
-class Error(Exception):
-    pass
-class ArgumentError(Error):
-    pass
-class CommandError(Error):
-    pass
-    
-try :
-    if len(sys.argv)!= 3 :
-        raise ArgumentError,'Solution needs 3 arguments instead {:}'\
-        .format(len(sys.argv))
-    else:
-        if sys.argv[1] not in ['--file','--f']:
-            raise CommandError, 'Use "--file" instead "{:}"'.format(sys.argv[1])
-        else:
-            alldata=Data(sys.argv[2]).FixedData()
-            output = '{:12}{:}\n'.format('NAMA','TOTAL SCORE')
-            for i in range(len(alldata)):
-                if len(alldata[i]) == 8:
-                    score=Score(alldata[i][1],alldata[i][2],alldata[i][3],alldata[i][4],
-                                alldata[i][5],alldata[i][6],alldata[i][7])
-                                    
-                    TotalScore = score.kota()+score.penghasilan()+ \
-                    score.umur()+score.kelamin()+score.pekerjaan()+ \
-                    score.tinggal()+score.hutang()
-                    output+='{:16}{:3d}\n'.format(alldata[i][0],TotalScore )
-                    
-                else :
-                    output+='{:12}{:>13}\n'.format(alldata[i][0],'Data Kurang!' )
-            f = open('output.txt','w')
-            f.write(output)
-            f.close() 
-except ArgumentError as e:
-    print "\nARGUMENT error : {:}\n".format(e)
-    
-except CommandError as e:
-    print "\nARGUMENT error : {:}\n".format(e)
-    
-except IOError as e:
-    print "\nI/O error : '{:}' is not in directory\n".format(e.filename)
+    def TotalScore (self):
+        alldata=self.FixedData()
+        output = '{:12}{:}\n'.format('NAMA','TOTAL SCORE')
+        for i in range(len(alldata)):
+            if len(alldata[i]) == 8 and '' not in alldata[i]:
+                score=Score(alldata[i][1],alldata[i][2],alldata[i][3],alldata[i][4],
+                            alldata[i][5],alldata[i][6],alldata[i][7])
+                                
+                TotalScore = score.kota()+score.penghasilan()+ \
+                score.umur()+score.kelamin()+score.pekerjaan()+ \
+                score.tinggal()+score.hutang()
+                output+='{:16}{:3d}\n'.format(alldata[i][0],TotalScore )
+                
+            else :
+                output+='{:12}{:>13}\n'.format(alldata[i][0],'Data Kurang!' )
+        f = open('output.txt','w')
+        f.write(output)
+        f.close() 
+        return
+def Filename():
+    parser = argparse.ArgumentParser(description='Count Total Score')
+    parser.add_argument('--file', type=str, help='COMMAND for the %(prog)s program')
+    args = parser.parse_args()
+    return vars(args)['file']
+Data(Filename()).TotalScore()
